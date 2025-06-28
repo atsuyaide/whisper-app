@@ -3,6 +3,7 @@ uvicorn[standard]
 httpx
 pytest
 pytest-randomly
+pytest-asyncio
 python-multipart
 openai-whisper
 ruff

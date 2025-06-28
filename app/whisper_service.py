@@ -57,6 +57,34 @@ class WhisperModelManager:
         # 標準モデルまたはローカルに存在するモデルかチェック
         return model_name in self.get_available_models()
 
+    def get_model_status(self, model_name: str) -> Dict[str, Any]:
+        """モデルの準備状態を取得"""
+        if not self.is_valid_model(model_name):
+            return {
+                "model": model_name,
+                "is_ready": False,
+                "is_loaded": False,
+                "message": f"Invalid model name. Available models: {self.get_available_models()}",
+            }
+
+        is_loaded = model_name in self.loaded_models
+
+        if is_loaded:
+            return {
+                "model": model_name,
+                "is_ready": True,
+                "is_loaded": True,
+                "message": "Model is loaded and ready",
+            }
+        else:
+            # モデルが利用可能だが未ロードの場合
+            return {
+                "model": model_name,
+                "is_ready": True,  # ロード可能なので準備OK
+                "is_loaded": False,
+                "message": "Model is available but not loaded yet",
+            }
+
     def load_model(self, model_name: str) -> Any:
         if not self.is_valid_model(model_name):
             raise ValueError(
@@ -82,7 +110,7 @@ class WhisperModelManager:
         return self.loaded_models[model_name]
 
     def transcribe(
-        self, audio_file_path: str, model_name: str = "base"
+        self, audio_file_path: str, model_name: str = "base", language: str = "ja"
     ) -> Dict[str, Any]:
         model = self.load_model(model_name)
 
@@ -90,7 +118,7 @@ class WhisperModelManager:
             logger.info(
                 f"Starting transcription for: {audio_file_path} with model: {model_name}"
             )
-            result = model.transcribe(audio_file_path)
+            result = model.transcribe(audio_file_path, language=language)
 
             return {
                 "text": result["text"].strip(),

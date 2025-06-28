@@ -1,56 +1,36 @@
-import json
-import logging
-import time
-
 from fastapi import (
     FastAPI,
     File,
-    Form,
     UploadFile,
+    HTTPException,
+    Form,
     WebSocket,
     WebSocketDisconnect,
 )
-
-from .config import settings
-from .dependencies import WhisperServiceDep
-from .exceptions import (
-    AudioProcessingError,
-    FileTooLargeError,
-    InvalidModelError,
-    ModelLoadError,
-    UnsupportedAudioFormatError,
-)
+import tempfile
+import os
+import json
+import logging
 from .schemas import (
-    ErrorMessage,
-    FinalMessage,
-    HealthResponse,
-    ModelLoadResponse,
-    ModelsResponse,
-    ModelStatusResponse,
-    PartialMessage,
-    ReadyMessage,
     TranscriptionResponse,
-    TranscriptionResult,
+    ModelsResponse,
+    HealthResponse,
+    ModelStatusResponse,
+    ModelLoadResponse,
+    ReadyMessage,
+    PartialMessage,
+    FinalMessage,
+    ErrorMessage,
 )
-from .utils import AudioFileProcessor, validate_audio_format, validate_file_size
+from .streaming_service import StreamingTranscriptionService
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title=settings.app_name,
+    title="Whisper Transcription API",
     description="音声ファイルを文字起こしするAPI",
-    version=settings.version,
-    debug=settings.debug,
+    version="1.0.0",
 )
-
-# 例外ハンドラーの登録（型エラーのため一時的にコメントアウト）
-# app.add_exception_handler(InvalidModelError, invalid_model_error_handler)
-# app.add_exception_handler(ModelLoadError, model_load_error_handler)
-# app.add_exception_handler(AudioProcessingError, audio_processing_error_handler)
-# app.add_exception_handler(
-#     UnsupportedAudioFormatError, unsupported_audio_format_error_handler
-# )
-# app.add_exception_handler(FileTooLargeError, file_too_large_error_handler)
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -59,29 +39,34 @@ async def health_check() -> HealthResponse:
 
 
 @app.get("/models", response_model=ModelsResponse)
-async def get_available_models(whisper_service: WhisperServiceDep) -> ModelsResponse:
-    return ModelsResponse(available_models=whisper_service.get_available_models())
+async def get_available_models() -> ModelsResponse:
+    from .whisper_service import whisper_manager
+
+    return ModelsResponse(available_models=whisper_manager.get_available_models())
 
 
 @app.get("/models/{model_name}/status", response_model=ModelStatusResponse)
-async def get_model_status(
-    model_name: str, whisper_service: WhisperServiceDep
-) -> ModelStatusResponse:
-    status = whisper_service.get_model_status(model_name)
+async def get_model_status(model_name: str) -> ModelStatusResponse:
+    from .whisper_service import whisper_manager
+
+    status = whisper_manager.get_model_status(model_name)
     return ModelStatusResponse(**status)
 
 
 @app.post("/models/{model_name}/load", response_model=ModelLoadResponse)
-async def load_model(
-    model_name: str, whisper_service: WhisperServiceDep
-) -> ModelLoadResponse:
+async def load_model(model_name: str) -> ModelLoadResponse:
     """指定されたモデルを事前にロードする"""
-    if not whisper_service.is_valid_model(model_name):
-        raise InvalidModelError(model_name, whisper_service.get_available_models())
+    from .whisper_service import whisper_manager
+    import time
+
+    if not whisper_manager.is_valid_model(model_name):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid model name: {model_name}. Available models: {whisper_manager.get_available_models()}",
+        )
 
     # 既にロード済みかチェック
-    status = whisper_service.get_model_status(model_name)
-    if status["is_loaded"]:
+    if model_name in whisper_manager.loaded_models:
         return ModelLoadResponse(
             model=model_name,
             is_loaded=True,
@@ -91,7 +76,7 @@ async def load_model(
 
     try:
         start_time = time.time()
-        whisper_service.load_model(model_name)
+        whisper_manager.load_model(model_name)
         load_time = time.time() - start_time
 
         return ModelLoadResponse(
@@ -102,84 +87,98 @@ async def load_model(
         )
 
     except Exception as e:
-        raise ModelLoadError(model_name, str(e))
+        raise HTTPException(
+            status_code=500, detail=f"Failed to load model {model_name}: {str(e)}"
+        )
 
 
 @app.post("/transcribe", response_model=TranscriptionResponse)
 async def transcribe_audio(
-    whisper_service: WhisperServiceDep,
     file: UploadFile = File(..., description="音声ファイル (WAV, MP3, MP4, M4A, FLAC)"),
-    model: str = Form(settings.default_model, description="使用するWhisperモデル"),
-    language: str = Form(settings.default_language, description="音声の言語コード"),
+    model: str = Form("base", description="使用するWhisperモデル"),
+    language: str = Form("ja", description="音声の言語コード"),
 ) -> TranscriptionResponse:
-    # ファイルサイズチェック
+    # 対応する音声ファイル形式をチェック
+    supported_formats = [
+        "audio/wav",
+        "audio/mp3",
+        "audio/mpeg",
+        "audio/mp4",
+        "audio/m4a",
+        "audio/flac",
+    ]
+    if file.content_type not in supported_formats:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file format. Supported formats: {', '.join(supported_formats)}",
+        )
+
+    # ファイルサイズチェック（100MB制限）
+    max_size = 100 * 1024 * 1024  # 100MB
     file_content = await file.read()
-    if not validate_file_size(len(file_content)):
-        raise FileTooLargeError(len(file_content), settings.max_file_size)
-
-    # 音声フォーマットチェック
-    if file.content_type and not validate_audio_format(file.content_type):
-        raise UnsupportedAudioFormatError(
-            file.content_type, settings.allowed_audio_formats
+    if len(file_content) > max_size:
+        raise HTTPException(
+            status_code=413, detail="File too large. Maximum size is 100MB"
         )
 
-    # モデル妥当性チェック
-    if not whisper_service.is_valid_model(model):
-        raise InvalidModelError(model, whisper_service.get_available_models())
+    # 一時ファイルに保存
+    filename = file.filename or "audio"
+    with tempfile.NamedTemporaryFile(
+        delete=False, suffix=os.path.splitext(filename)[1]
+    ) as temp_file:
+        temp_file.write(file_content)
+        temp_file_path = temp_file.name
 
-    temp_file_path = None
     try:
-        # 一時ファイル保存
-        temp_file_path = AudioFileProcessor.save_uploaded_file(
-            file_content, suffix=".tmp"
-        )
+        # モデル選択のバリデーション
+        from .whisper_service import whisper_manager
+
+        if not whisper_manager.is_valid_model(model):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid model: {model}. Available models: {whisper_manager.get_available_models()}",
+            )
 
         # Whisperを使った文字起こし処理
-        transcription_result = whisper_service.transcribe(
-            str(temp_file_path), model, language
+        transcription_result = whisper_manager.transcribe(
+            temp_file_path, model, language
         )
 
+        from .schemas import TranscriptionResult
+
         return TranscriptionResponse(
-            filename=file.filename or "unknown",
+            filename=filename,
             content_type=file.content_type or "application/octet-stream",
             file_size=len(file_content),
             transcription=TranscriptionResult(**transcription_result),
-            status="completed",
+            status="success",
         )
 
-    except Exception as e:
-        logger.error(f"Transcription failed: {str(e)}")
-        raise AudioProcessingError("transcription", str(e))
     finally:
-        # 一時ファイルのクリーンアップ
-        if temp_file_path and temp_file_path.exists():
-            temp_file_path.unlink()
+        # 一時ファイルを削除
+        if os.path.exists(temp_file_path):
+            os.unlink(temp_file_path)
 
 
 @app.websocket("/stream-transcribe")
 async def stream_transcribe(
-    websocket: WebSocket,
-    model: str = settings.default_model,
-    language: str = settings.default_language,
+    websocket: WebSocket, model: str = "base", language: str = "ja"
 ) -> None:
     await websocket.accept()
 
-    # WhisperServiceの取得（WebSocketではDI使用不可）
-    from .dependencies import get_whisper_service
-
-    whisper_service = get_whisper_service()
-
     # モデルの妥当性チェック
-    if not whisper_service.is_valid_model(model):
-        error_msg = ErrorMessage(
-            message=f"Invalid model: {model}. Available models: {whisper_service.get_available_models()}"
-        )
+    from .whisper_service import whisper_manager
+
+    if not whisper_manager.is_valid_model(model):
+        error_msg = ErrorMessage(message=f"Invalid model: {model}")
         await websocket.send_text(error_msg.model_dump_json())
         await websocket.close()
         return
 
     # ストリーミングサービスを初期化
-    streaming_service = whisper_service.create_streaming_service(model, language)
+    streaming_service = StreamingTranscriptionService(
+        model_name=model, language=language
+    )
 
     # 準備完了メッセージを送信
     ready_msg = ReadyMessage()
@@ -215,9 +214,7 @@ async def stream_transcribe(
                     control_msg = json.loads(message["text"])
                     if control_msg.get("type") == "audio_info":
                         # 音声情報を受信してAudioBufferを更新
-                        sample_rate = control_msg.get(
-                            "sample_rate", settings.default_sample_rate
-                        )
+                        sample_rate = control_msg.get("sample_rate", 16000)
                         streaming_service.audio_buffer.update_sample_rate(sample_rate)
                         logger.info(f"Audio info received: {sample_rate}Hz")
 

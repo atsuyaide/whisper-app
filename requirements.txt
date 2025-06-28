@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+httpx
+pytest
+pytest-randomly
+python-multipart
+openai-whisper
+ruff
+mypy
+pre-commit

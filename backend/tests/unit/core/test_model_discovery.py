@@ -33,8 +33,8 @@ class TestModelDiscovery:
             assert "base" in local_models
             assert "tiny" in local_models
             assert "large-v3" in local_models
-            assert "custom-model" not in local_models
-            assert "base-v1" not in local_models
+            assert "custom-model" in local_models  # ハイフンを含むモデル名は有効
+            assert "base-v1" in local_models  # ハイフンを含むモデル名は有効
 
     def test_get_available_models_standard_only(self):
         manager = WhisperModelManager()

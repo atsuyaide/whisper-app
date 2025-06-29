@@ -12,20 +12,20 @@ class TestIntegration:
         return Path(__file__).parent / "fixtures" / "audio"
 
     def test_transcribe_real_audio_wav(self, audio_files_dir):
-        audio_file = audio_files_dir / "asano.wav"
+        audio_file = audio_files_dir / "test.wav"
 
         if not audio_file.exists():
-            pytest.skip("Audio file asano.wav not found")
+            pytest.skip("Audio file test.wav not found")
 
         with open(audio_file, "rb") as f:
-            files = {"file": ("asano.wav", f, "audio/wav")}
+            files = {"file": ("test.wav", f, "audio/wav")}
             response = client.post("/transcribe", files=files)
 
         assert response.status_code == 200
         data = response.json()
 
         # レスポンス構造の確認
-        assert data["filename"] == "asano.wav"
+        assert data["filename"] == "test.wav"
         assert data["content_type"] == "audio/wav"
         assert data["status"] == "success"
         assert "transcription" in data
@@ -41,20 +41,20 @@ class TestIntegration:
         print(f"Model used: {data['transcription']['model_used']}")
 
     def test_transcribe_real_audio_mp3(self, audio_files_dir):
-        audio_file = audio_files_dir / "asano.mp3"
+        audio_file = audio_files_dir / "test.mp3"
 
         if not audio_file.exists():
-            pytest.skip("Audio file asano.mp3 not found")
+            pytest.skip("Audio file test.mp3 not found")
 
         with open(audio_file, "rb") as f:
-            files = {"file": ("asano.mp3", f, "audio/mp3")}
+            files = {"file": ("test.mp3", f, "audio/mp3")}
             response = client.post("/transcribe", files=files)
 
         assert response.status_code == 200
         data = response.json()
 
         # レスポンス構造の確認
-        assert data["filename"] == "asano.mp3"
+        assert data["filename"] == "test.mp3"
         assert data["content_type"] == "audio/mp3"
         assert data["status"] == "success"
         assert "transcription" in data
@@ -70,13 +70,13 @@ class TestIntegration:
         print(f"Model used: {data['transcription']['model_used']}")
 
     def test_transcribe_with_tiny_model(self, audio_files_dir):
-        audio_file = audio_files_dir / "asano.wav"
+        audio_file = audio_files_dir / "test.wav"
 
         if not audio_file.exists():
-            pytest.skip("Audio file asano.wav not found")
+            pytest.skip("Audio file test.wav not found")
 
         with open(audio_file, "rb") as f:
-            files = {"file": ("asano.wav", f, "audio/wav")}
+            files = {"file": ("test.wav", f, "audio/wav")}
             data = {"model": "tiny"}
             response = client.post("/transcribe", files=files, data=data)
 
@@ -89,14 +89,14 @@ class TestIntegration:
         print(f"Tiny model result: {response_data['transcription']['text']}")
 
     def test_transcribe_file_size_check(self, audio_files_dir):
-        audio_file = audio_files_dir / "asano.wav"
+        audio_file = audio_files_dir / "test.wav"
 
         if not audio_file.exists():
-            pytest.skip("Audio file asano.wav not found")
+            pytest.skip("Audio file test.wav not found")
 
         with open(audio_file, "rb") as f:
             file_content = f.read()
-            files = {"file": ("asano.wav", file_content, "audio/wav")}
+            files = {"file": ("test.wav", file_content, "audio/wav")}
             response = client.post("/transcribe", files=files)
 
         data = response.json()

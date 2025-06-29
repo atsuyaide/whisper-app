@@ -5,7 +5,7 @@ import tempfile
 from fastapi.testclient import TestClient
 from unittest.mock import patch
 from app.main import app
-from app.streaming_service import AudioBuffer, StreamingTranscriptionService
+from app.services.streaming_service import AudioBuffer, StreamingTranscriptionService
 
 client = TestClient(app)
 

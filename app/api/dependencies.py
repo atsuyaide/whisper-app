@@ -2,9 +2,9 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from .config import settings
-from .whisper_service import WhisperModelManager
-from .streaming_service import StreamingTranscriptionService
+from ..core.config import settings
+from ..services.whisper_service import WhisperModelManager
+from ..services.streaming_service import StreamingTranscriptionService
 
 
 class WhisperService:

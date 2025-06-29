@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import Mock, patch
-from app.whisper_service import WhisperModelManager, STANDARD_MODELS
+from app.services.whisper_service import WhisperModelManager, STANDARD_MODELS
 
 
 class TestWhisperModelManager:
@@ -32,7 +32,7 @@ class TestWhisperModelManager:
         assert manager.is_valid_model("") is False
         assert manager.is_valid_model("large-v999") is False
 
-    @patch("app.whisper_service.whisper.load_model")
+    @patch("app.services.whisper_service.whisper.load_model")
     def test_load_model_success(self, mock_load_model):
         mock_model = Mock()
         mock_load_model.return_value = mock_model
@@ -44,7 +44,7 @@ class TestWhisperModelManager:
         assert "base" in manager.loaded_models
         mock_load_model.assert_called_once()
 
-    @patch("app.whisper_service.whisper.load_model")
+    @patch("app.services.whisper_service.whisper.load_model")
     def test_load_model_invalid(self, mock_load_model):
         manager = WhisperModelManager()
 
@@ -54,7 +54,7 @@ class TestWhisperModelManager:
         assert "Invalid model name" in str(exc_info.value)
         mock_load_model.assert_not_called()
 
-    @patch("app.whisper_service.whisper.load_model")
+    @patch("app.services.whisper_service.whisper.load_model")
     def test_load_model_cached(self, mock_load_model):
         mock_model = Mock()
         mock_load_model.return_value = mock_model
@@ -70,7 +70,7 @@ class TestWhisperModelManager:
         assert result1 == mock_model
         mock_load_model.assert_called_once()  # 1回だけ呼ばれる
 
-    @patch("app.whisper_service.whisper.load_model")
+    @patch("app.services.whisper_service.whisper.load_model")
     def test_transcribe_success(self, mock_load_model):
         mock_model = Mock()
         mock_model.transcribe.return_value = {
@@ -88,7 +88,7 @@ class TestWhisperModelManager:
         assert result["model_used"] == "base"
         assert len(result["segments"]) == 1
 
-    @patch("app.whisper_service.whisper.load_model")
+    @patch("app.services.whisper_service.whisper.load_model")
     def test_transcribe_invalid_model(self, mock_load_model):
         manager = WhisperModelManager()
 
@@ -98,7 +98,7 @@ class TestWhisperModelManager:
         assert "Invalid model name" in str(exc_info.value)
         mock_load_model.assert_not_called()
 
-    @patch("app.whisper_service.whisper.load_model")
+    @patch("app.services.whisper_service.whisper.load_model")
     def test_transcribe_failure(self, mock_load_model):
         mock_model = Mock()
         mock_model.transcribe.side_effect = Exception("Transcription error")

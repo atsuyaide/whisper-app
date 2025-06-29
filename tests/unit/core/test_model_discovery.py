@@ -1,5 +1,5 @@
 from unittest.mock import patch, Mock
-from app.whisper_service import WhisperModelManager, STANDARD_MODELS
+from app.services.whisper_service import WhisperModelManager, STANDARD_MODELS
 
 
 class TestModelDiscovery:

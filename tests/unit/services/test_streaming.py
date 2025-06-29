@@ -58,7 +58,7 @@ class TestStreamingTranscriptionService:
         assert service.chunk_counter == 0
 
     @pytest.mark.asyncio
-    @patch("app.streaming_service.whisper_manager.transcribe")
+    @patch("app.services.streaming_service.whisper_manager.transcribe")
     async def test_process_audio_chunk_success(self, mock_transcribe):
         mock_transcribe.return_value = {"text": "Hello world", "language": "en"}
 
@@ -85,7 +85,7 @@ class TestStreamingTranscriptionService:
         assert result is None
 
     @pytest.mark.asyncio
-    @patch("app.streaming_service.whisper_manager.transcribe")
+    @patch("app.services.streaming_service.whisper_manager.transcribe")
     async def test_process_final_audio(self, mock_transcribe):
         mock_transcribe.return_value = {
             "text": "Final transcription",
@@ -139,7 +139,7 @@ class TestWebSocketEndpoint:
                 f.seek(44)  # WAVヘッダーは通常44バイト
                 return f.read()
 
-    @patch("app.streaming_service.whisper_manager.transcribe")
+    @patch("app.services.streaming_service.whisper_manager.transcribe")
     def test_websocket_streaming_flow(self, mock_transcribe):
         mock_transcribe.side_effect = [
             {"text": "Hello", "language": "en"},
@@ -186,7 +186,7 @@ class TestWebSocketEndpoint:
             assert error_msg["type"] == "error"
             assert "Invalid model" in error_msg["message"]
 
-    @patch("app.streaming_service.whisper_manager.transcribe")
+    @patch("app.services.streaming_service.whisper_manager.transcribe")
     def test_websocket_invalid_json(self, mock_transcribe):
         with client.websocket_connect("/stream-transcribe?model=base") as websocket:
             # 準備完了メッセージを受信

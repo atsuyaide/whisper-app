@@ -9,7 +9,7 @@ client = TestClient(app)
 @pytest.fixture
 def mock_whisper_manager():
     """WhisperModelManagerのモック"""
-    with patch("app.whisper_service.whisper_manager") as mock:
+    with patch("app.services.whisper_service.whisper_manager") as mock:
         mock.get_available_models.return_value = ["tiny", "base", "small"]
         mock.is_valid_model.return_value = True
         mock.loaded_models = {}
@@ -107,7 +107,7 @@ def test_load_different_models(mock_whisper_manager, model_name):
 
 def test_load_model_response_schema():
     """レスポンススキーマの妥当性テスト"""
-    with patch("app.whisper_service.whisper_manager") as mock:
+    with patch("app.services.whisper_service.whisper_manager") as mock:
         mock.is_valid_model.return_value = True
         mock.loaded_models = {}
         mock.load_model.return_value = MagicMock()

@@ -2,8 +2,8 @@ import tempfile
 import wave
 from pathlib import Path
 
-from .config import settings
-from .exceptions import AudioProcessingError
+from ..core.config import settings
+from ..core.exceptions import AudioProcessingError
 
 
 class AudioFileProcessor:

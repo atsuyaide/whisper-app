@@ -35,7 +35,20 @@ class ModelStatusResponse(BaseModel):
     model: str
     is_ready: bool
     is_loaded: bool
+    is_custom: bool
     message: str
+
+
+class ModelInfoResponse(BaseModel):
+    model: str
+    exists: bool
+    is_custom: bool = False
+    is_loaded: bool = False
+    type: str = "standard"
+    file_path: str | None = None
+    file_size: int | None = None
+    last_modified: float | None = None
+    message: str | None = None
 
 
 class ModelLoadResponse(BaseModel):

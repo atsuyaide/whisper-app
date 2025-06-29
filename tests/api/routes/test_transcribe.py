@@ -6,7 +6,7 @@ import io
 client = TestClient(app)
 
 
-@patch("app.whisper_service.whisper_manager.transcribe")
+@patch("app.services.whisper_service.whisper_manager.transcribe")
 def test_transcribe_audio_success(mock_transcribe):
     # モックの返り値を設定
     mock_transcribe.return_value = {
@@ -33,7 +33,7 @@ def test_transcribe_audio_success(mock_transcribe):
     assert data["transcription"]["model_used"] == "base"
 
 
-@patch("app.whisper_service.whisper_manager.transcribe")
+@patch("app.services.whisper_service.whisper_manager.transcribe")
 def test_transcribe_audio_with_model_selection(mock_transcribe):
     # モックの返り値を設定
     mock_transcribe.return_value = {

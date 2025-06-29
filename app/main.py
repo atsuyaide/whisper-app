@@ -11,19 +11,20 @@ from fastapi import (
     WebSocketDisconnect,
 )
 
-from .config import settings
-from .dependencies import WhisperServiceDep
-from .exceptions import (
+from .api.dependencies import WhisperServiceDep
+from .core.config import settings
+from .core.exceptions import (
     AudioProcessingError,
     FileTooLargeError,
     InvalidModelError,
     ModelLoadError,
     UnsupportedAudioFormatError,
 )
-from .schemas import (
+from .schemas.schemas import (
     ErrorMessage,
     FinalMessage,
     HealthResponse,
+    ModelInfoResponse,
     ModelLoadResponse,
     ModelsResponse,
     ModelStatusResponse,
@@ -32,7 +33,7 @@ from .schemas import (
     TranscriptionResponse,
     TranscriptionResult,
 )
-from .utils import AudioFileProcessor, validate_audio_format, validate_file_size
+from .utils.utils import AudioFileProcessor, validate_audio_format, validate_file_size
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +70,15 @@ async def get_model_status(
 ) -> ModelStatusResponse:
     status = whisper_service.get_model_status(model_name)
     return ModelStatusResponse(**status)
+
+
+@app.get("/models/{model_name}/info", response_model=ModelInfoResponse)
+async def get_model_info(
+    model_name: str, whisper_service: WhisperServiceDep
+) -> ModelInfoResponse:
+    """モデルの詳細情報を取得（カスタムモデルの場合はファイル情報も含む）"""
+    info = whisper_service.model_manager.get_model_info(model_name)
+    return ModelInfoResponse(**info)
 
 
 @app.post("/models/{model_name}/load", response_model=ModelLoadResponse)
@@ -165,7 +175,7 @@ async def stream_transcribe(
     await websocket.accept()
 
     # WhisperServiceの取得（WebSocketではDI使用不可）
-    from .dependencies import get_whisper_service
+    from .api.dependencies import get_whisper_service
 
     whisper_service = get_whisper_service()
 

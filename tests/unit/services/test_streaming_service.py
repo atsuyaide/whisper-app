@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch
-from app.streaming_service import AudioBuffer, StreamingTranscriptionService
+from app.services.streaming_service import AudioBuffer, StreamingTranscriptionService
 
 
 class TestAudioBufferUnit:
@@ -38,7 +38,7 @@ class TestAudioBufferUnit:
 
 class TestStreamingTranscriptionServiceUnit:
     @pytest.mark.asyncio
-    @patch("app.streaming_service.whisper_manager")
+    @patch("app.services.streaming_service.whisper_manager")
     async def test_chunk_processing_workflow(self, mock_whisper_manager):
         mock_whisper_manager.transcribe.return_value = {
             "text": "Test transcription",
@@ -62,7 +62,7 @@ class TestStreamingTranscriptionServiceUnit:
         assert service.chunk_counter == 1
 
     @pytest.mark.asyncio
-    @patch("app.streaming_service.whisper_manager")
+    @patch("app.services.streaming_service.whisper_manager")
     async def test_final_processing_with_accumulated_text(self, mock_whisper_manager):
         mock_whisper_manager.transcribe.return_value = {
             "text": "Final part",
@@ -115,7 +115,7 @@ class TestStreamingTranscriptionServiceUnit:
         assert service.accumulated_text == " Hello world! extra"
 
     @pytest.mark.asyncio
-    @patch("app.streaming_service.whisper_manager")
+    @patch("app.services.streaming_service.whisper_manager")
     async def test_error_handling_in_chunk_processing(self, mock_whisper_manager):
         mock_whisper_manager.transcribe.side_effect = Exception("Transcription failed")
 
@@ -130,7 +130,7 @@ class TestStreamingTranscriptionServiceUnit:
         assert service.chunk_counter == 0
 
     @pytest.mark.asyncio
-    @patch("app.streaming_service.whisper_manager")
+    @patch("app.services.streaming_service.whisper_manager")
     async def test_error_handling_in_final_processing(self, mock_whisper_manager):
         mock_whisper_manager.transcribe.side_effect = Exception(
             "Final transcription failed"

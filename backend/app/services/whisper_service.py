@@ -5,6 +5,8 @@ import os
 import re
 from pathlib import Path
 
+from ..core.config import settings
+
 logger = logging.getLogger(__name__)
 
 # 標準のWhisperモデル
@@ -18,14 +20,11 @@ STANDARD_MODELS = [
     "large-v3",
 ]
 
-# モデル保存ディレクトリ
-MODEL_DIR = Path("models/whisper")
-
 
 class WhisperModelManager:
     def __init__(self) -> None:
         self.loaded_models: Dict[str, Any] = {}
-        self.model_dir = MODEL_DIR
+        self.model_dir = settings.model_cache_dir
         self.model_dir.mkdir(parents=True, exist_ok=True)
 
     def _scan_local_models(self) -> List[str]:

@@ -5,6 +5,7 @@ pytest
 pytest-randomly
 pytest-asyncio
 python-multipart
+python-dotenv
 openai-whisper
 ruff
 mypy

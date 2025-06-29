@@ -10,8 +10,8 @@ class TestCustomModelSupport:
         model_dir.mkdir(parents=True)
 
         # テスト用のカスタムモデルファイル作成
-        (model_dir / "my-custom-model.pt").write_text("dummy model")
-        (model_dir / "japanese-news-v1.pt").write_text("dummy model")
+        (model_dir / "tiny-fine-tuned.pt").write_text("dummy model")
+        (model_dir / "custom-model-v1.pt").write_text("dummy model")
         (model_dir / "invalid-name!.pt").write_text("invalid")  # 無効な文字
 
         manager = WhisperModelManager()
@@ -20,8 +20,8 @@ class TestCustomModelSupport:
         local_models = manager._scan_local_models()
 
         # 有効なカスタムモデルのみが検出される
-        assert "my-custom-model" in local_models
-        assert "japanese-news-v1" in local_models
+        assert "tiny-fine-tuned" in local_models
+        assert "custom-model-v1" in local_models
         assert "invalid-name!" not in local_models  # 無効な文字は除外
 
     def test_is_custom_model(self, tmp_path):

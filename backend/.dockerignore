@@ -37,7 +37,6 @@ tests/
 # 開発用ファイル（本番イメージに不要）
 pytest.ini
 mypy.ini
-requirements.txt
 demo/
 
 # IDE

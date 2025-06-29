@@ -3,7 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: development  # 開発用。本番では production に変更
     ports:
       - "8000:8000"
     volumes:

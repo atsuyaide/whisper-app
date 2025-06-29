@@ -1,0 +1,40 @@
+services:
+  whisper-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development  # 開発用。本番では production に変更
+    ports:
+      - "8000:8000"
+    volumes:
+      # ソースコードのホットリロード（開発時のみ）
+      - .:/app
+      # モデルファイルを永続化
+      - whisper-models:/app/models
+    env_file:
+      - .env
+    environment:
+      # .envファイルから環境変数を読み込み（デフォルト値）
+      - APP_NAME=${APP_NAME:-Whisper音声文字起こしAPI}
+      - MODEL_CACHE_DIR=${MODEL_CACHE_DIR:-models/whisper}
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-base}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-26214400}
+      - ALLOWED_AUDIO_FORMATS=${ALLOWED_AUDIO_FORMATS:-audio/wav,audio/mp3,audio/mp4,audio/m4a,audio/flac}
+      - DEFAULT_LANGUAGE=${DEFAULT_LANGUAGE:-ja}
+      - CHUNK_DURATION=${CHUNK_DURATION:-2.0}
+      - DEFAULT_SAMPLE_RATE=${DEFAULT_SAMPLE_RATE:-16000}
+      - HOST=${HOST:-0.0.0.0}
+      - PORT=${PORT:-8000}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DEBUG=${DEBUG:-false}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+volumes:
+  whisper-models:
+    driver: local

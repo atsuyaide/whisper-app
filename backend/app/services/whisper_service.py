@@ -102,10 +102,10 @@ class WhisperModelManager:
                 "message": f"{'Custom' if is_custom else 'Standard'} model is loaded and ready",
             }
         else:
-            # モデルが利用可能だが未ロードの場合
+            # ロード可能なので準備完了とみなす
             return {
                 "model": model_name,
-                "is_ready": True,  # ロード可能なので準備OK
+                "is_ready": True,
                 "is_loaded": False,
                 "is_custom": is_custom,
                 "message": f"{'Custom' if is_custom else 'Standard'} model is available but not loaded yet",

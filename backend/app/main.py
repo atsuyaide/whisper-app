@@ -44,14 +44,6 @@ app = FastAPI(
     debug=settings.debug,
 )
 
-# 例外ハンドラーの登録（型エラーのため一時的にコメントアウト）
-# app.add_exception_handler(InvalidModelError, invalid_model_error_handler)
-# app.add_exception_handler(ModelLoadError, model_load_error_handler)
-# app.add_exception_handler(AudioProcessingError, audio_processing_error_handler)
-# app.add_exception_handler(
-#     UnsupportedAudioFormatError, unsupported_audio_format_error_handler
-# )
-# app.add_exception_handler(FileTooLargeError, file_too_large_error_handler)
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -89,7 +81,6 @@ async def load_model(
     if not whisper_service.is_valid_model(model_name):
         raise InvalidModelError(model_name, whisper_service.get_available_models())
 
-    # 既にロード済みかチェック
     status = whisper_service.get_model_status(model_name)
     if status["is_loaded"]:
         return ModelLoadResponse(
@@ -122,29 +113,24 @@ async def transcribe_audio(
     model: str = Form(settings.default_model, description="使用するWhisperモデル"),
     language: str = Form(settings.default_language, description="音声の言語コード"),
 ) -> TranscriptionResponse:
-    # ファイルサイズチェック
     file_content = await file.read()
     if not validate_file_size(len(file_content)):
         raise FileTooLargeError(len(file_content), settings.max_file_size)
 
-    # 音声フォーマットチェック
     if file.content_type and not validate_audio_format(file.content_type):
         raise UnsupportedAudioFormatError(
             file.content_type, settings.allowed_audio_formats
         )
 
-    # モデル妥当性チェック
     if not whisper_service.is_valid_model(model):
         raise InvalidModelError(model, whisper_service.get_available_models())
 
     temp_file_path = None
     try:
-        # 一時ファイル保存
         temp_file_path = AudioFileProcessor.save_uploaded_file(
             file_content, suffix=".tmp"
         )
 
-        # Whisperを使った文字起こし処理
         transcription_result = whisper_service.transcribe(
             str(temp_file_path), model, language
         )
@@ -161,7 +147,6 @@ async def transcribe_audio(
         logger.error(f"Transcription failed: {str(e)}")
         raise AudioProcessingError("transcription", str(e))
     finally:
-        # 一時ファイルのクリーンアップ
         if temp_file_path and temp_file_path.exists():
             temp_file_path.unlink()
 
@@ -174,12 +159,11 @@ async def stream_transcribe(
 ) -> None:
     await websocket.accept()
 
-    # WhisperServiceの取得（WebSocketではDI使用不可）
+    # WebSocketエンドポイントではFastAPIの依存性注入が使用できないため手動でサービスを取得
     from .api.dependencies import get_whisper_service
 
     whisper_service = get_whisper_service()
 
-    # モデルの妥当性チェック
     if not whisper_service.is_valid_model(model):
         error_msg = ErrorMessage(
             message=f"Invalid model: {model}. Available models: {whisper_service.get_available_models()}"
@@ -188,27 +172,22 @@ async def stream_transcribe(
         await websocket.close()
         return
 
-    # ストリーミングサービスを初期化
     streaming_service = whisper_service.create_streaming_service(model, language)
 
-    # 準備完了メッセージを送信
     ready_msg = ReadyMessage()
     await websocket.send_text(ready_msg.model_dump_json())
 
     try:
         while True:
-            # メッセージを受信
             message = await websocket.receive()
 
             if message["type"] == "websocket.disconnect":
                 break
 
-            # バイナリデータ（音声チャンク）の場合
             if message["type"] == "websocket.receive" and "bytes" in message:
                 audio_data = message["bytes"]
                 streaming_service.audio_buffer.add_data(audio_data)
 
-                # チャンクが準備できたら処理
                 chunk_data = streaming_service.audio_buffer.get_chunk_if_ready()
                 if chunk_data:
                     partial_result = await streaming_service.process_audio_chunk(
@@ -219,12 +198,10 @@ async def stream_transcribe(
                         partial_msg = PartialMessage(**partial_result)
                         await websocket.send_text(partial_msg.model_dump_json())
 
-            # テキストメッセージ（コントロール）の場合
             elif message["type"] == "websocket.receive" and "text" in message:
                 try:
                     control_msg = json.loads(message["text"])
                     if control_msg.get("type") == "audio_info":
-                        # 音声情報を受信してAudioBufferを更新
                         sample_rate = control_msg.get(
                             "sample_rate", settings.default_sample_rate
                         )
@@ -232,7 +209,6 @@ async def stream_transcribe(
                         logger.info(f"Audio info received: {sample_rate}Hz")
 
                     elif control_msg.get("type") == "end":
-                        # 残りの音声データを処理
                         remaining_data = (
                             streaming_service.audio_buffer.get_remaining_data()
                         )

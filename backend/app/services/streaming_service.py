@@ -56,21 +56,17 @@ class StreamingTranscriptionService:
             return None
 
         try:
-            # 一時WAVファイルを作成
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
-                # WAVヘッダーを作成
                 with wave.open(temp_file.name, "wb") as wav_file:
-                    wav_file.setnchannels(1)  # モノラル
-                    wav_file.setsampwidth(2)  # 16-bit
+                    wav_file.setnchannels(1)
+                    wav_file.setsampwidth(2)
                     wav_file.setframerate(self.audio_buffer.sample_rate)
                     wav_file.writeframes(chunk_data)
 
-                # Whisperで文字起こし
                 result = whisper_manager.transcribe(
                     temp_file.name, self.model_name, self.language
                 )
 
-                # 一時ファイルを削除
                 Path(temp_file.name).unlink()
 
                 self.chunk_counter += 1

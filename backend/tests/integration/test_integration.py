@@ -9,7 +9,7 @@ client = TestClient(app)
 class TestIntegration:
     @pytest.fixture
     def audio_files_dir(self):
-        return Path(__file__).parent / "fixtures" / "audio"
+        return Path(__file__).parent.parent / "fixtures" / "audio"
 
     def test_transcribe_real_audio_wav(self, audio_files_dir):
         audio_file = audio_files_dir / "test.wav"
@@ -27,7 +27,7 @@ class TestIntegration:
         # レスポンス構造の確認
         assert data["filename"] == "test.wav"
         assert data["content_type"] == "audio/wav"
-        assert data["status"] == "success"
+        assert data["status"] == "completed"
         assert "transcription" in data
         assert "text" in data["transcription"]
         assert "language" in data["transcription"]
@@ -56,7 +56,7 @@ class TestIntegration:
         # レスポンス構造の確認
         assert data["filename"] == "test.mp3"
         assert data["content_type"] == "audio/mp3"
-        assert data["status"] == "success"
+        assert data["status"] == "completed"
         assert "transcription" in data
         assert "text" in data["transcription"]
         assert "language" in data["transcription"]

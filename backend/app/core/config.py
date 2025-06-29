@@ -18,14 +18,21 @@ class Settings(BaseModel):
     # API設定
     max_file_size: int = int(os.getenv("MAX_FILE_SIZE", "26214400"))  # デフォルト25MB
     allowed_audio_formats: List[str] = os.getenv(
-        "ALLOWED_AUDIO_FORMATS", 
-        "audio/wav,audio/mp3,audio/mp4,audio/m4a,audio/flac"
+        "ALLOWED_AUDIO_FORMATS", "audio/wav,audio/mp3,audio/mp4,audio/m4a,audio/flac"
     ).split(",")
 
     # Whisperモデル設定
     model_cache_dir: Path = Path(os.getenv("MODEL_CACHE_DIR", "models/whisper"))
     default_model: str = os.getenv("DEFAULT_MODEL", "base")
-    available_models: List[str] = ["tiny", "base", "small", "medium", "large-v1", "large-v2", "large-v3"]
+    available_models: List[str] = [
+        "tiny",
+        "base",
+        "small",
+        "medium",
+        "large-v1",
+        "large-v2",
+        "large-v3",
+    ]
 
     # ストリーミング設定
     default_language: str = os.getenv("DEFAULT_LANGUAGE", "ja")
